@@ -158,11 +158,11 @@ RoundCorner=0
 [Plugins]
 Core=1
 ; 核心功能，禁用需谨慎
-System=1
+System=0
 ; 操作系统相关功能
-Misc=1
+Misc=0
 ; 实用工具集合
-QRCode=1
+QRCode=0
 ; 生成二维码
 Kanji=0
 ; 简体繁体转换

@@ -98,7 +98,7 @@ global g_Plugins := Object()
 
 global g_InputArea := "Edit1"
 global g_DisplayArea := "Edit3"
-global g_CommandArea := "Edit4"
+
 
 FileRead, currentPlugins, %A_ScriptDir%\Core\Plugins.ahk
 needRestart := false
@@ -178,33 +178,15 @@ Gui, Add, Edit, % "y+" border " -VScroll ReadOnly -WantReturn"
         . " w" g_SkinConf.WidgetWidth " h" g_SkinConf.DisplayAreaHeight
         , % AlignText(SearchCommand("", true))
 
-if (g_SkinConf.ShowCurrentCommand)
-{
-    Gui, Add, Edit, % "y+" border " ReadOnly"
-        . " w" g_SkinConf.WidgetWidth " h" g_SkinConf.EditHeight,
-    windowHeight += border + g_SkinConf.EditHeight
-}
 
-if (g_SkinConf.ShowInputBoxOnlyIfEmpty)
-{
-    windowHeight := border * 2 + g_SkinConf.EditHeight
-    SysGet, screenHeight, 79
-    windowY := "y" (screenHeight - border * 2 - g_SkinConf.EditHeight - g_SkinConf.DisplayAreaHeight) / 2
-}
+windowHeight := border * 2 + g_SkinConf.EditHeight
+SysGet, screenHeight, 79
+windowY := "y" (screenHeight - border * 2 - g_SkinConf.EditHeight - g_SkinConf.DisplayAreaHeight) / 2
 
-if (g_SkinConf.HideTitle)
-{
-    Gui -Caption
-}
 
-cmdlineArg = %1%
-if (cmdlineArg == "--hide")
-{
-    hideWindow := " Hide"
-}
-
+Gui -Caption
 Gui, Show, % windowY " w" border * 2 + g_SkinConf.WidgetWidth
-    . " h" windowHeight hideWindow, % g_WindowName
+    . " h" windowHeight Hide, % g_WindowName
 
 if (g_SkinConf.RoundCorner > 0)
 {
@@ -234,7 +216,6 @@ Hotkey, IfWinActive, % g_WindowName
 Hotkey, Esc, EscFunction
 Hotkey, !F4, ExitRunZ
 
-Hotkey, Tab, TabFunction
 Hotkey, F1, Help
 Hotkey, +F1, KeyHelp
 Hotkey, F2, EditConfig
@@ -242,39 +223,16 @@ Hotkey, F3, EditAutoConfig
 Hotkey, ^q, RestartRunZ
 Hotkey, ^l, ClearInput
 Hotkey, ^d, OpenCurrentFileDir
-Hotkey, ^x, DeleteCurrentFile
 Hotkey, ^s, ShowCurrentFile
 Hotkey, ^r, ReindexFiles
 Hotkey, ^h, DisplayHistoryCommands
-Hotkey, ^n, IncreaseRank
-Hotkey, ^=, IncreaseRank
-Hotkey, ^p, DecreaseRank
-Hotkey, ^-, DecreaseRank
-Hotkey, ^f, NextPage
-Hotkey, ^b, PrevPage
-Hotkey, ^i, HomeKey
-Hotkey, ^o, EndKey
+
 Hotkey, ^j, NextCommand
 Hotkey, ^k, PrevCommand
 Hotkey, Down, NextCommand
 Hotkey, Up, PrevCommand
-Hotkey, ~LButton, ClickFunction
-Hotkey, RButton, OpenContextMenu
-Hotkey, AppsKey, OpenContextMenu
 Hotkey, ^Enter, SaveResultAsArg
 
-; 剩余按键 Ctrl + e g m t w
-
-Loop, % g_DisplayRows
-{
-    key := Chr(g_FirstChar + A_Index - 1)
-    ; lalt +
-    Hotkey, !%key%, RunSelectedCommand
-    ; tab +
-    Hotkey, ~%key%, RunSelectedCommand
-    ; shift +
-    Hotkey, ~+%key%, GotoCommand
-}
 
 for key, label in g_Conf.Hotkey
 {
@@ -289,11 +247,6 @@ for key, label in g_Conf.Hotkey
 }
 
 Hotkey, IfWinActive
-
-if (g_Conf.Config.EnableGlobalMenu)
-{
-    HotKey, #RButton, GlobalMenu
-}
 
 for key, label in g_Conf.GlobalHotkey
 {
@@ -332,39 +285,6 @@ RestartRunZ:
     Reload
 return
 
-Test:
-    MsgBox, 测试
-return
-
-HomeKey:
-    Send, {home}
-return
-
-EndKey:
-    Send, {End}
-return
-
-NextPage:
-    if (!g_UseDisplay)
-    {
-        return
-    }
-
-    ControlFocus, %g_DisplayArea%
-    Send, {pgdn}
-    ControlFocus, %g_InputArea%
-return
-
-PrevPage:
-    if (!g_UseDisplay)
-    {
-        return
-    }
-
-    ControlFocus, %g_DisplayArea%
-    Send, {pgup}
-    ControlFocus, %g_InputArea%
-return
 
 ActivateRunZ:
     Gui, Show, , % g_WindowName
@@ -390,86 +310,7 @@ ToggleWindow:
     }
 return
 
-getMouseCurrentLine()
-{
-    MouseGetPos, , mouseY, , classnn,
-    if (classnn != g_DisplayArea)
-    {
-        return -1
-    }
 
-    ControlGetPos, , y, , h, %g_DisplayArea%
-    lineHeight := h / g_DisplayRows
-    index := Ceil((mouseY - y) / lineHeight)
-    return index
-}
-
-ClickFunction:
-    if (g_UseDisplay)
-    {
-        return
-    }
-
-    index := getMouseCurrentLine()
-    if (index < 0)
-    {
-        return
-    }
-
-    if (g_CurrentCommandList[index] != "")
-    {
-        ChangeCommand(index - 1, true)
-    }
-
-    ControlFocus, %g_InputArea%
-    Send, {end}
-
-    if (g_Conf.Config.ClickToRun)
-    {
-        GoSub, RunCurrentCommand
-    }
-return
-
-OpenContextMenu:
-    if (!g_UseDisplay)
-    {
-        currentCommandText := ""
-        if (!g_CurrentLine > 0)
-        {
-            currentCommandText .= Chr(g_FirstChar)
-        }
-        else
-        {
-            currentCommandText .= Chr(g_FirstChar + g_CurrentLine - 1)
-        }
-        Menu, ContextMenu, Add, %currentCommandText%>  运行 &Z, RunCurrentCommand
-        Menu, ContextMenu, Add
-    }
-
-    Menu, ContextMenu, Add, 编辑配置 &E, EditConfig
-    Menu, ContextMenu, Add, 重建索引 &S, ReindexFiles
-    Menu, ContextMenu, Add, 显示历史 &H, DisplayHistoryCommands
-    Menu, ContextMenu, Add, 更新路径 &C, ChangePath
-    Menu, ContextMenu, Add
-    Menu, ContextMenu, Add, 显示帮助 &A, Help
-    Menu, ContextMenu, Add, 重新启动 &R, RestartRunZ
-    Menu, ContextMenu, Add, 退出程序 &X, ExitRunZ
-    Menu, ContextMenu, Show
-    Menu, ContextMenu, DeleteAll
-return
-
-TabFunction:
-    ControlGetFocus, ctrl,
-    if (ctrl == g_InputArea)
-    {
-        ; 定位到一个隐藏编辑框
-        ControlFocus, Edit2
-    }
-    else
-    {
-        ControlFocus, %g_InputArea%
-    }
-return
 
 EscFunction:
     ToolTip
@@ -739,33 +580,25 @@ return
 ProcessInputCommandCallBack:
     SetTimer, ProcessInputCommandCallBack, Off
 
-    if (g_SkinConf.ShowInputBoxOnlyIfEmpty)
-    {
-        if (g_CurrentInput != "")
-        {
-            if (g_SkinConf.ShowCurrentCommand)
-            {
-                windowHeight := g_SkinConf.BorderSize * 4
-                    + g_SkinConf.EditHeight * 2 + g_SkinConf.DisplayAreaHeight
-            }
-            else
-            {
-                windowHeight := g_SkinConf.BorderSize * 3
-                    + g_SkinConf.EditHeight + g_SkinConf.DisplayAreaHeight
-            }
-            WinMove, %g_WindowName%, , , , , %windowHeight%
-        }
-        else
-        {
-            windowHeight := g_SkinConf.BorderSize * 2 + g_SkinConf.EditHeight
-            WinMove, %g_WindowName%, , , , , %windowHeight%
-        }
 
-        if (g_SkinConf.RoundCorner > 0)
-        {
-            WinSet, Region, % "0-0 w" border * 2 + g_SkinConf.WidgetWidth " h" windowHeight
-                . " r" g_SkinConf.RoundCorner "-" g_SkinConf.RoundCorner, % g_WindowName
-        }
+    if (g_CurrentInput != "")
+    {
+
+            windowHeight := g_SkinConf.BorderSize * 3
+                + g_SkinConf.EditHeight + g_SkinConf.DisplayAreaHeight
+
+        WinMove, %g_WindowName%, , , , , %windowHeight%
+    }
+    else
+    {
+        windowHeight := g_SkinConf.BorderSize * 2 + g_SkinConf.EditHeight
+        WinMove, %g_WindowName%, , , , , %windowHeight%
+    }
+
+    if (g_SkinConf.RoundCorner > 0)
+    {
+        WinSet, Region, % "0-0 w" border * 2 + g_SkinConf.WidgetWidth " h" windowHeight
+            . " r" g_SkinConf.RoundCorner "-" g_SkinConf.RoundCorner, % g_WindowName
     }
 
     SearchCommand(g_CurrentInput)
@@ -980,20 +813,11 @@ SearchCommand(command = "", firstRun = false)
         g_UseFallbackCommands := false
     }
 
-    if (g_SkinConf.HideCol2)
-    {
-        result := StrReplace(result, "file | ")
-        result := StrReplace(result, "function | ")
-        result := StrReplace(result, "cmd | ")
-        result := StrReplace(result, "url | ")
-    }
-    else
-    {
-        result := StrReplace(result, "file | ", "文件 | ")
-        result := StrReplace(result, "function | ", "功能 | ")
-        result := StrReplace(result, "cmd | ", "命令 | ")
-        result := StrReplace(result, "url | ", "网址 | ")
-    }
+
+    result := StrReplace(result, "file | ")
+    result := StrReplace(result, "function | ")
+    result := StrReplace(result, "cmd | ")
+    result := StrReplace(result, "url | ")
 
     DisplaySearchResult(result)
     return result
@@ -1008,11 +832,6 @@ DisplaySearchResult(result)
         RunCommand(g_CurrentCommand)
     }
 
-    if (g_SkinConf.ShowCurrentCommand)
-    {
-        commandToShow := SubStr(g_CurrentCommand, InStr(g_CurrentCommand, " | ") + 3)
-        ControlSetText, %g_CommandArea%, %commandToShow%, %g_WindowName%
-    }
 }
 
 FilterResult(text, needle)
@@ -1359,21 +1178,6 @@ RunSelectedCommand:
     RunCommand(g_CurrentCommandList[index])
 return
 
-IncreaseRank:
-    if (g_CurrentCommand != "")
-    {
-        ChangeRank(g_CurrentCommand, true)
-        LoadFiles()
-    }
-return
-
-DecreaseRank:
-    if (g_CurrentCommand != "")
-    {
-        ChangeRank(g_CurrentCommand, true, -1)
-        LoadFiles()
-    }
-return
 
 LoadFiles(loadRank := true)
 {
@@ -1648,17 +1452,6 @@ OpenCurrentFileDir:
     OpenPath(filePath)
 return
 
-DeleteCurrentFile:
-    filePath := StrSplit(g_CurrentCommand, " | ")[2]
-
-    if (!FileExist(filePath))
-    {
-        return
-    }
-
-    FileRecycle, % filePath
-    GoSub, ReindexFiles
-return
 
 ShowCurrentFile:
     clipboard := StrSplit(g_CurrentCommand, " | ")[2]
@@ -1812,55 +1605,33 @@ return
 AlignText(text)
 {
     col3MaxLen := g_SkinConf.DisplayCol3MaxLength
-    col4MaxLen := g_SkinConf.DisplayCol4MaxLength
     col3Pos := 10
 
     StrSpace := " "
-    Loop, % col3MaxLen + col4MaxLen
+    Loop, % col3MaxLen 
         StrSpace .= " "
 
     result := ""
 
-    if (g_SkinConf.HideCol2)
+    ; 隐藏第二列的话，把第二列的空间分给第三列
+    col3MaxLen += 7
+    col3Pos := 5
+
+    hasCol2 := true
+    Loop, Parse, text, `n, `r
     {
-        ; 隐藏第二列的话，把第二列的空间分给第三列
-        col3MaxLen += 7
-        col3Pos := 5
-
-        hasCol2 := true
-        Loop, Parse, text, `n, `r
+        if (SubStr(text, 3, 1) != "|" || SubStr(text, 8, 1) != "|")
         {
-            if (SubStr(text, 3, 1) != "|" || SubStr(text, 8, 1) != "|")
-            {
-                hasCol2 := false
-                break
-            }
-        }
-
-        if (hasCol2)
-        {
-            col3Pos := 10
+            hasCol2 := false
+            break
         }
     }
 
-    if (g_SkinConf.HideCol4IfEmpty)
+    if (hasCol2)
     {
-        Loop, Parse, text, `n, `r
-        {
-            if (StrSplit(SubStr(A_LoopField, col3Pos), " | ")[2] != "")
-            {
-                hasCol4 := true
-                break
-            }
-        }
-
-        if (!hasCol4)
-        {
-            ; 加上中间的 " | "
-            col3MaxLen += col4MaxLen + 3
-            col4MaxLen := 0
-        }
+        col3Pos := 10
     }
+
 
     Loop, Parse, text, `n, `r
     {
@@ -1892,21 +1663,6 @@ AlignText(text)
             result .= splitedLine[1] . SubStr(StrSpace, 1, col3MaxLen - col3RealLen)
         }
 
-        if (col4MaxLen > 0)
-        {
-            result .= " | "
-
-            col4RealLen := StrLen(RegExReplace(splitedLine[2], "[^\x00-\xff]", "`t`t"))
-
-            if (col4RealLen > col4MaxLen)
-            {
-                result .= SubStrByByte(splitedLine[2], col4MaxLen)
-            }
-            else
-            {
-                result .= splitedLine[2]
-            }
-        }
 
         result .= "`r`n"
     }
@@ -1939,19 +1695,12 @@ SaveResultAsArg:
     Arg := ""
     ControlGetText, result, %g_DisplayArea%
 
-    ; 处理隐藏第二列的情况
-    if (g_SkinConf.HideCol2)
+    FullPipeArg := ""
+    Loop, Parse, result, `n, `r
     {
-        FullPipeArg := ""
-        Loop, Parse, result, `n, `r
-        {
-            FullPipeArg .= SubStr(A_LoopField, 1, 2) "| 占位 | " SubStr(A_LoopField, 5) "`n"
-        }
+        FullPipeArg .= SubStr(A_LoopField, 1, 2) "| 占位 | " SubStr(A_LoopField, 5) "`n"
     }
-    else
-    {
-        FullPipeArg := result
-    }
+    
 
     if (InStr(g_CurrentCommand, "file | ") == 1)
     {
@@ -1964,20 +1713,12 @@ SaveResultAsArg:
     }
     else
     {
-        if (g_SkinConf.HideCol2)
+        Loop, Parse, result, `n, `r
         {
-            Loop, Parse, result, `n, `r
-            {
-                Arg .= Trim(StrSplit(A_LoopField, " | ")[2]) " "
-            }
+            Arg .= Trim(StrSplit(A_LoopField, " | ")[2]) " "
         }
-        else
-        {
-            Loop, Parse, result, `n, `r
-            {
-                Arg .= Trim(StrSplit(A_LoopField, " | ")[3]) " "
-            }
-        }
+    
+        
     }
 
     Arg := Trim(Arg)
@@ -2015,7 +1756,6 @@ return
 #include %A_ScriptDir%\Lib\EasyIni.ahk
 #include %A_ScriptDir%\Lib\TCMatch.ahk
 #include %A_ScriptDir%\Core\Common.ahk
-#include %A_ScriptDir%\Core\GlobalMenu.ahk
 #include *i %A_ScriptDir%\Core\Plugins.ahk
 ; 发送到菜单自动生成的命令
 #include *i %A_ScriptDir%\Conf\UserFunctionsAuto.txt
